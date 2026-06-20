@@ -153,13 +153,14 @@ elif [[ "${OS}" == "windows" || "${OS}" == "windowsnogpl" ]]; then
 
     # TEMP DIAG: figure out why the Wine /unix bash bridge can't open codesign.sh
     echo "=== WINSIGN DIAG ===" >&2
-    echo "pwd=$(pwd)  THIS_DIR=${THIS_DIR}" >&2
-    echo "CODESIGN_SH=${CODESIGN_SH}" >&2
-    echo "ls -la .buildkite ->" >&2; ls -la .buildkite >&2 2>&1 || true
+    echo "pwd=$(pwd)  CODESIGN_SH=${CODESIGN_SH}" >&2
     { ls -la "${CODESIGN_SH}" >&2 2>&1 && echo "linux: READABLE" >&2; } || echo "linux: NOT READABLE" >&2
-    echo "readlink -f -> $(readlink -f "${CODESIGN_SH}" 2>&1)" >&2
-    "${WINE}" cmd /c "echo wine-env CODESIGN_SH=%CODESIGN_SH%" >&2 2>&1 || true
-    "${WINE}" start /wait /unix /bin/bash -c "echo wine-unix pwd=\$(pwd) uid=\$(id -u); if [ -r '${CODESIGN_SH}' ]; then echo 'wine-unix: FOUND+READABLE'; else echo 'wine-unix: MISSING'; ls -la '$(dirname "${CODESIGN_SH}")' 2>&1 | head -5; fi" >&2 2>&1 || true
+    echo "winepath -w CODESIGN_SH -> $("${WINE}" winepath -w "${CODESIGN_SH}" 2>&1)" >&2
+    # start /unix detaches the child's stdout, so capture the probe via a file.
+    rm -f /tmp/winediag.txt
+    "${WINE}" start /wait /unix /bin/bash -c "{ echo pwd=\$(pwd); echo uid=\$(id -un); printf 'readable: '; [ -r '${CODESIGN_SH}' ] && echo YES || echo NO; ls -la '${CODESIGN_SH}' 2>&1; } >/tmp/winediag.txt 2>&1" >/dev/null 2>&1 || true
+    echo "--- wine /unix bash probe (captured from file) ---" >&2
+    cat /tmp/winediag.txt >&2 2>&1 || echo "NO PROBE FILE (start /unix bash never ran)" >&2
     echo "=== END DIAG ===" >&2
 
     "${WINE}" "${ISCC_EXE}" \
