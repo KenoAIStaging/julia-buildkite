@@ -2,13 +2,16 @@ steps:
   - group: "Upload"
     steps:
       - label: "upload docs"
-        # The step key is part of the job's OIDC identity: the
-        # julia-oidc-docs-deploy IAM role only trusts this step, and only from
-        # the trusted julia-publish pipeline (this file is launched by the
-        # publish pipeline, not the build pipeline). There is no `depends_on`
-        # doctest here: the html docs tarball is read from the commit-sha
-        # gated S3 staging area (the build pipeline's doctest step stages it),
-        # the same cross-pipeline handoff used for the binaries.
+        # The step key IS this job's OIDC identity: julia-oidc-docs-deploy only
+        # trusts step_key "deploy_docs", from the trusted julia-publish pipeline
+        # (this file is launched by the publish pipeline, not the build one).
+        # The key MUST be on this job -- the one that actually assumes the role
+        # -- not on the launcher step in publish/launch.yml that uploads this
+        # file (that launcher touches no AWS). There is no `depends_on` doctest
+        # here: the html docs tarball is read from the commit-sha gated S3
+        # staging area (the build pipeline's doctest step stages it), the same
+        # cross-pipeline handoff used for the binaries.
+        key: "deploy_docs"
         # Prevent multiple pipelines from pushing to the `git@github.com:JuliaLang/docs.julialang.org` repo simultaneously
         concurrency: 1
         concurrency_group: 'upload/julialang/upload_docs/docs_julialang_org'
@@ -23,9 +26,13 @@ steps:
               # We maintain multiple Documenter manifests (one manifest for each v1.x minor version of Julia).
               version: '1.10' # GREP_ME: Keep this updated to LTS. Do not set it to '1' or 'stable' or 'latest'.
           - JuliaCI/sandbox#v2:
-              # Use `aws_uploader` image, since it has things like `git` and `ssh` and whatnot
-              rootfs_url: "https://github.com/JuliaCI/rootfs-images/releases/download/v8.1/aws_uploader.x86_64.tar.gz"
-              rootfs_treehash: "c031b94d209e3e86507aaa9998c1fa3544f32c72"
+              # Use the julia_publish image (same trusted toolchain as the
+              # publish_all step): it has git/ssh/awscli AND the aws-kms-pkcs11
+              # PKCS#11 provider used to SSH-sign the docs push with the KMS
+              # deploy key. (NB: bump this treehash together with publish/launch.yml's
+              # once the rootfs PR adding aws-kms-pkcs11 to julia_publish releases.)
+              rootfs_url: "https://github.com/JuliaCI/rootfs-images/releases/download/v8.3/julia_publish.x86_64.tar.gz"
+              rootfs_treehash: "e11a4f12b441b5201ba672077c000bbdea8df244"
               uid: 1000
               gid: 1000
               workspaces:

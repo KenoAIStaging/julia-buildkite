@@ -74,8 +74,11 @@ steps:
           AZURE_TENANT_ID: "8d3de454-9fdc-4091-90af-9cf79dcabe79"
           AZURE_CLIENT_ID: "a1fa180a-5312-4673-a98c-7cde383bae9c"
 
+      # Launcher only: uploads the docs-deploy pipeline and touches no AWS, so
+      # it must NOT carry key "deploy_docs" -- that key belongs to the actual
+      # role-assuming "upload docs" job (see misc/deploy_docs.yml), and a
+      # duplicate key across the build is rejected.
       - label: "deploy docs"
-        key: "deploy_docs"
         plugins:
           - JuliaCI/external-buildkite#v1:
               version: "./.buildkite-external-version"
