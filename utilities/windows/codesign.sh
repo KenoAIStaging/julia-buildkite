@@ -150,6 +150,14 @@ elif [ -d "${TARGET}" ]; then
     echo "Codesigned ${#PE_FILES[@]} files"
 else
     echo "Given codesigning target '${TARGET}' not a file or directory!" >&2
+    # TEMP DIAG: the wine SignTool hook gives a path that doesn't resolve --
+    # show what's actually in that dir (and the raw arg) so we can see where
+    # ISCC really put the uninstaller temp.
+    echo "DIAG: raw arg=[${1:-<none>}] TARGET=[${TARGET}] pwd=$(pwd)" >&2
+    echo "DIAG: ls of $(dirname "${TARGET}") ->" >&2
+    ls -la "$(dirname "${TARGET}")" >&2 2>&1 | head -40 || echo "  (not listable)" >&2
+    echo "DIAG: uninst* anywhere under build dir ->" >&2
+    find "$(dirname "${TARGET}")" -maxdepth 2 -iname 'uninst*' >&2 2>&1 || true
     usage
     exit 1
 fi
