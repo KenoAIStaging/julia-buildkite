@@ -162,7 +162,15 @@ elif [[ "${OS}" == "windows" || "${OS}" == "windowsnogpl" ]]; then
         chmod 700 "${XDG_RUNTIME_DIR}"
         export XDG_RUNTIME_DIR
     fi
-    echo "DIAG: bash=$(command -v bash); /bin/bash=$(ls -l /bin/bash 2>&1); codesign.sh exec=$([ -x "${CODESIGN_SH}" ] && echo YES || echo NO)" >&2
+    # DECISIVE PROBE: can a wine /unix child see the build-dir bind mount?
+    # (bash -c needs no file from /cache, so bash runs regardless; it then
+    # tries to list/read the bind-mounted codesign.sh dir and logs to /tmp,
+    # which lives in the rootfs and is always writable.)
+    rm -f /tmp/winechild_probe.txt
+    "${WINE}" start /wait /unix /bin/bash -c "{ echo CWD=\$(pwd); echo '-- build-dir (bind mount) --'; ls -la '$(dirname "${CODESIGN_SH}")'; echo '-- codesign.sh readable? --'; cat '${CODESIGN_SH}' >/dev/null 2>&1 && echo READABLE || echo UNREADABLE; } >/tmp/winechild_probe.txt 2>&1" >/dev/null 2>&1 || true
+    echo "=== WINE-CHILD PROBE ===" >&2
+    cat /tmp/winechild_probe.txt >&2 2>&1 || echo "NO PROBE FILE (bash -c via start /unix never ran)" >&2
+    echo "=== END WINE-CHILD PROBE ===" >&2
 
     "${WINE}" "${ISCC_EXE}" \
         /DAppVersion="${JULIA_VERSION}" \
