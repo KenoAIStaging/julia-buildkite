@@ -151,6 +151,17 @@ elif [[ "${OS}" == "windows" || "${OS}" == "windowsnogpl" ]]; then
     ISCC_EXE="${ISCC_EXE:-C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe}"
     export CODESIGN_SH="${codesign_script}"
 
+    # TEMP DIAG: figure out why the Wine /unix bash bridge can't open codesign.sh
+    echo "=== WINSIGN DIAG ===" >&2
+    echo "pwd=$(pwd)  THIS_DIR=${THIS_DIR}" >&2
+    echo "CODESIGN_SH=${CODESIGN_SH}" >&2
+    echo "ls -la .buildkite ->" >&2; ls -la .buildkite >&2 2>&1 || true
+    { ls -la "${CODESIGN_SH}" >&2 2>&1 && echo "linux: READABLE" >&2; } || echo "linux: NOT READABLE" >&2
+    echo "readlink -f -> $(readlink -f "${CODESIGN_SH}" 2>&1)" >&2
+    "${WINE}" cmd /c "echo wine-env CODESIGN_SH=%CODESIGN_SH%" >&2 2>&1 || true
+    "${WINE}" start /wait /unix /bin/bash -c "echo wine-unix pwd=\$(pwd) uid=\$(id -u); if [ -r '${CODESIGN_SH}' ]; then echo 'wine-unix: FOUND+READABLE'; else echo 'wine-unix: MISSING'; ls -la '$(dirname "${CODESIGN_SH}")' 2>&1 | head -5; fi" >&2 2>&1 || true
+    echo "=== END DIAG ===" >&2
+
     "${WINE}" "${ISCC_EXE}" \
         /DAppVersion="${JULIA_VERSION}" \
         /DSourceDir="$("${WINE}" winepath -w "$(pwd)/${JULIA_INSTALL_DIR}")" \
