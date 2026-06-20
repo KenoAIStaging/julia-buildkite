@@ -151,17 +151,18 @@ elif [[ "${OS}" == "windows" || "${OS}" == "windowsnogpl" ]]; then
     ISCC_EXE="${ISCC_EXE:-C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe}"
     export CODESIGN_SH="${codesign_script}"
 
-    # TEMP DIAG: figure out why the Wine /unix bash bridge can't open codesign.sh
-    echo "=== WINSIGN DIAG ===" >&2
-    echo "pwd=$(pwd)  CODESIGN_SH=${CODESIGN_SH}" >&2
-    { ls -la "${CODESIGN_SH}" >&2 2>&1 && echo "linux: READABLE" >&2; } || echo "linux: NOT READABLE" >&2
-    echo "winepath -w CODESIGN_SH -> $("${WINE}" winepath -w "${CODESIGN_SH}" 2>&1)" >&2
-    # start /unix detaches the child's stdout, so capture the probe via a file.
-    rm -f /tmp/winediag.txt
-    "${WINE}" start /wait /unix /bin/bash -c "{ echo pwd=\$(pwd); echo uid=\$(id -un); printf 'readable: '; [ -r '${CODESIGN_SH}' ] && echo YES || echo NO; ls -la '${CODESIGN_SH}' 2>&1; } >/tmp/winediag.txt 2>&1" >/dev/null 2>&1 || true
-    echo "--- wine /unix bash probe (captured from file) ---" >&2
-    cat /tmp/winediag.txt >&2 2>&1 || echo "NO PROBE FILE (start /unix bash never ran)" >&2
-    echo "=== END DIAG ===" >&2
+    # Wine needs a valid XDG_RUNTIME_DIR for the wineserver runtime socket.
+    # The sandbox leaves it unset/invalid, so wineserver's service startup
+    # (RpcSs, explorer) fails and even `winepath` page-faults -- which then
+    # cascades into ISCC's SignTool bridge being unable to launch codesign.sh
+    # ("No such file or directory"). Point it at a private, mode-0700 dir.
+    if [[ -z "${XDG_RUNTIME_DIR:-}" ]] || [[ ! -w "${XDG_RUNTIME_DIR:-/nonexistent}" ]]; then
+        XDG_RUNTIME_DIR="${TMPDIR:-/tmp}/xdg-runtime-$(id -u)"
+        mkdir -p "${XDG_RUNTIME_DIR}"
+        chmod 700 "${XDG_RUNTIME_DIR}"
+        export XDG_RUNTIME_DIR
+    fi
+    echo "DIAG: XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR}; winepath -w -> $("${WINE}" winepath -w "${CODESIGN_SH}" 2>&1 | tail -1)" >&2
 
     "${WINE}" "${ISCC_EXE}" \
         /DAppVersion="${JULIA_VERSION}" \
