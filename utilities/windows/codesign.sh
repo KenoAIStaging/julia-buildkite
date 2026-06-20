@@ -34,10 +34,24 @@ fi
 TARGET="${1}"
 
 # When invoked from the Wine-side Inno Setup hook, the argument is a
-# Windows path; translate it back to a host path.
-if [[ "${TARGET}" =~ ^[A-Za-z]: ]]; then
+# Windows path; translate it back to a host path. The publish sandbox maps
+# Wine's Z: drive to the filesystem root, so translate Z: paths mechanically
+# rather than via `winepath -u`: each winepath call spawns a slow (and, in
+# this sandbox, page-faulting) Wine process, and that latency is enough for
+# ISCC's freshly-written uninstaller temp to disappear before we sign it.
+if [[ "${TARGET}" =~ ^[Zz]:[\\/] ]]; then
+    TARGET="/${TARGET:3}"
+    TARGET="${TARGET//\\//}"
+elif [[ "${TARGET}" =~ ^[A-Za-z]: ]]; then
     TARGET="$(winepath -u "${TARGET}")"
 fi
+
+# The hook can also reach us before ISCC's just-written target is flushed and
+# visible on the bind mount shared with the Wine process; wait briefly for it.
+for _ in $(seq 1 40); do
+    [ -e "${TARGET}" ] && break
+    sleep 0.25
+done
 
 # The non-production publish test stack sets PUBLISH_SKIP_WINDOWS_SIGN=1:
 # Windows Authenticode signing is Azure Trusted Signing, which has no
@@ -150,14 +164,6 @@ elif [ -d "${TARGET}" ]; then
     echo "Codesigned ${#PE_FILES[@]} files"
 else
     echo "Given codesigning target '${TARGET}' not a file or directory!" >&2
-    # TEMP DIAG: the wine SignTool hook gives a path that doesn't resolve --
-    # show what's actually in that dir (and the raw arg) so we can see where
-    # ISCC really put the uninstaller temp.
-    echo "DIAG: raw arg=[${1:-<none>}] TARGET=[${TARGET}] pwd=$(pwd)" >&2
-    echo "DIAG: ls of $(dirname "${TARGET}") ->" >&2
-    ls -la "$(dirname "${TARGET}")" >&2 2>&1 | head -40 || echo "  (not listable)" >&2
-    echo "DIAG: uninst* anywhere under build dir ->" >&2
-    find "$(dirname "${TARGET}")" -maxdepth 2 -iname 'uninst*' >&2 2>&1 || true
     usage
     exit 1
 fi

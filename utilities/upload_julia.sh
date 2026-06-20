@@ -161,6 +161,17 @@ elif [[ "${OS}" == "windows" || "${OS}" == "windowsnogpl" ]]; then
         export XDG_RUNTIME_DIR
     fi
 
+    # Marker file the SignTool hook (wine_signtool.cmd) uses to block until
+    # codesign.sh has actually finished: Wine's `start /wait /unix` does not
+    # wait for the launched Unix process, so without this the hook returns
+    # before signing happens and ISCC reaps the transient uninstaller temp
+    # out from under jsign. The hook needs both the Unix path (the signer
+    # writes it) and its Windows form (the sandbox maps Wine's Z: drive to /).
+    CODESIGN_HOOK_DONE="${XDG_RUNTIME_DIR}/codesign-hook.done"
+    export CODESIGN_HOOK_DONE
+    CODESIGN_HOOK_DONE_WIN="Z:${CODESIGN_HOOK_DONE//\//\\}"
+    export CODESIGN_HOOK_DONE_WIN
+
     "${WINE}" "${ISCC_EXE}" \
         /DAppVersion="${JULIA_VERSION}" \
         /DSourceDir="$("${WINE}" winepath -w "$(pwd)/${JULIA_INSTALL_DIR}")" \
