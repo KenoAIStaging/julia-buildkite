@@ -25,4 +25,7 @@ ping -n 2 127.0.0.1 >nul 2>&1
 goto wait_signer
 :signer_done
 set /p SIGNER_RC=<"%CODESIGN_HOOK_DONE_WIN%"
+rem Consume the marker so the next (sequential) SignTool call can't misread a
+rem stale exit code if its start-of-call delete ever no-ops.
+del "%CODESIGN_HOOK_DONE_WIN%" 2>nul
 if not "%SIGNER_RC%"=="0" exit /b 1
