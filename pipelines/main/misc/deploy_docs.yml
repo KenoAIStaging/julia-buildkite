@@ -40,11 +40,10 @@ steps:
                 - "/cache/repos:/cache/repos"
         commands: |
           echo "--- Download built docs from staging"
-          # TODO(publish-split): the build pipeline's doctest step must stage
-          # julia-*-htmldocs.tar.gz to the julia-ci staging bucket via the
-          # untrusted `stage` role (same handoff as the binaries). This job
-          # then downloads it from there. Until that staging step exists,
-          # this download has no source.
+          # The build pipeline's doctest step stages julia-*-htmldocs.tar.gz to
+          # the commit-sha-gated staging path via the untrusted `stage` role
+          # (the same handoff as the binaries; see misc/doctest.yml). We read it
+          # back from there with the trusted docs-deploy role.
           source .buildkite/utilities/aws_oidc.sh docs-deploy
           aws s3 cp "s3://${STAGING_BUCKET:-julialang-ephemeral-ci}/${S3_BUCKET_PREFIX:-bin}/${BUILDKITE_COMMIT}/" . \
               --recursive --exclude "*" --include "*-htmldocs.tar.gz"

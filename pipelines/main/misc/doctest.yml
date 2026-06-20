@@ -41,6 +41,25 @@ steps:
 
           echo "--- Compress and upload HTML docs"
           buildkite-agent artifact upload "$${DOCUMENTER_ARCHIVE}"
+
+          echo "--- Stage HTML docs to S3 for the publish pipeline"
+          # Mirror the binary handoff (build_julia.sh): a write-once upload to
+          # this build's commit-sha-gated staging path via the untrusted
+          # `stage` role, which can do nothing else. The trusted julia-publish
+          # docs-deploy phase reads it back from the same path (see
+          # utilities/deploy_docs.sh). STAGING_BUCKET selection mirrors
+          # build_envs.sh; docs are not platform/no-GPL specific, so the prefix
+          # is the default `bin`.
+          cd ..
+          if [[ "$${BUILDKITE_PIPELINE_SLUG:-}" == "julia-pr" ]]; then
+              STAGING_BUCKET="julialang-ephemeral-pr"
+          else
+              STAGING_BUCKET="julialang-ephemeral-ci"
+          fi
+          source .buildkite/utilities/aws_oidc.sh stage
+          source .buildkite/utilities/upload_to_s3.sh
+          UPLOAD_TO_S3_ACL=none upload_to_s3 "doc/$${DOCUMENTER_ARCHIVE}" \
+              "$${STAGING_BUCKET}/$${S3_BUCKET_PREFIX:-bin}/$${BUILDKITE_COMMIT?}/$${DOCUMENTER_ARCHIVE}"
         env:
           # Give a fake documenter key to get Documenter to try and deploy for us
           DOCUMENTER_KEY: ""
