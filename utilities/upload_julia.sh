@@ -162,12 +162,7 @@ elif [[ "${OS}" == "windows" || "${OS}" == "windowsnogpl" ]]; then
         chmod 700 "${XDG_RUNTIME_DIR}"
         export XDG_RUNTIME_DIR
     fi
-    echo "=== WINE ENV DIAG ===" >&2
-    echo "wine version: $("${WINE}" --version 2>&1 | tail -1)" >&2
-    echo "tools: Xvfb=$(command -v Xvfb || echo NO) xvfb-run=$(command -v xvfb-run || echo NO) wineboot=$(command -v wineboot || echo NO) Xorg=$(command -v Xorg || echo NO)" >&2
-    echo "DISPLAY=${DISPLAY:-unset} WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-unset} WINEPREFIX=${WINEPREFIX:-unset} XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR}" >&2
-    echo "wineboot -u ->" >&2; "${WINE}"boot -u >&2 2>&1 || echo "(wineboot failed rc=$?)" >&2
-    echo "=== END WINE ENV DIAG ===" >&2
+    echo "DIAG: bash=$(command -v bash); /bin/bash=$(ls -l /bin/bash 2>&1); codesign.sh exec=$([ -x "${CODESIGN_SH}" ] && echo YES || echo NO)" >&2
 
     "${WINE}" "${ISCC_EXE}" \
         /DAppVersion="${JULIA_VERSION}" \
