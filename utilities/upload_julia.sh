@@ -152,25 +152,14 @@ elif [[ "${OS}" == "windows" || "${OS}" == "windowsnogpl" ]]; then
     export CODESIGN_SH="${codesign_script}"
 
     # Wine needs a valid XDG_RUNTIME_DIR for the wineserver runtime socket.
-    # The sandbox leaves it unset/invalid, so wineserver's service startup
-    # (RpcSs, explorer) fails and even `winepath` page-faults -- which then
-    # cascades into ISCC's SignTool bridge being unable to launch codesign.sh
-    # ("No such file or directory"). Point it at a private, mode-0700 dir.
+    # The sandbox leaves it unset/invalid, which makes wineserver service
+    # startup fail and `winepath` page-fault. Point it at a private 0700 dir.
     if [[ -z "${XDG_RUNTIME_DIR:-}" ]] || [[ ! -w "${XDG_RUNTIME_DIR:-/nonexistent}" ]]; then
         XDG_RUNTIME_DIR="${TMPDIR:-/tmp}/xdg-runtime-$(id -u)"
         mkdir -p "${XDG_RUNTIME_DIR}"
         chmod 700 "${XDG_RUNTIME_DIR}"
         export XDG_RUNTIME_DIR
     fi
-    # DECISIVE PROBE: can a wine /unix child see the build-dir bind mount?
-    # (bash -c needs no file from /cache, so bash runs regardless; it then
-    # tries to list/read the bind-mounted codesign.sh dir and logs to /tmp,
-    # which lives in the rootfs and is always writable.)
-    rm -f /tmp/winechild_probe.txt
-    "${WINE}" start /wait /unix /bin/bash -c "{ echo CWD=\$(pwd); echo '-- build-dir (bind mount) --'; ls -la '$(dirname "${CODESIGN_SH}")'; echo '-- codesign.sh readable? --'; cat '${CODESIGN_SH}' >/dev/null 2>&1 && echo READABLE || echo UNREADABLE; } >/tmp/winechild_probe.txt 2>&1" >/dev/null 2>&1 || true
-    echo "=== WINE-CHILD PROBE ===" >&2
-    cat /tmp/winechild_probe.txt >&2 2>&1 || echo "NO PROBE FILE (bash -c via start /unix never ran)" >&2
-    echo "=== END WINE-CHILD PROBE ===" >&2
 
     "${WINE}" "${ISCC_EXE}" \
         /DAppVersion="${JULIA_VERSION}" \
