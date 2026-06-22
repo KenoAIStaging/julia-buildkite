@@ -29,10 +29,10 @@ steps:
               # Use the julia_publish image (same trusted toolchain as the
               # publish_all step): it has git/ssh/awscli AND the aws-kms-pkcs11
               # PKCS#11 provider used to SSH-sign the docs push with the KMS
-              # deploy key. (NB: bump this treehash together with publish/launch.yml's
-              # once the rootfs PR adding aws-kms-pkcs11 to julia_publish releases.)
-              rootfs_url: "https://github.com/JuliaCI/rootfs-images/releases/download/v8.3/julia_publish.x86_64.tar.gz"
-              rootfs_treehash: "e11a4f12b441b5201ba672077c000bbdea8df244"
+              # deploy key. (Keep this treehash in sync with publish/launch.yml's
+              # -- it is the same image.)
+              rootfs_url: "https://github.com/JuliaCI/rootfs-images/releases/download/v8.6/julia_publish.x86_64.tar.gz"
+              rootfs_treehash: "8b28c5b8937f25827c1ad4b6a3bc1bb90c9e9087"
               uid: 1000
               gid: 1000
               workspaces:
@@ -64,10 +64,10 @@ steps:
           cd repo
 
           echo "--- deploy new docs"
-          # Delete everything except for `.git`
-          shopt -s extglob
-          rm -rf !(".git")
-          shopt -u extglob
+          # Delete everything except for `.git` (find, not an extglob `!(.git)`
+          # glob, which fails to parse unless `shopt -s extglob` is already
+          # active when the commands block is parsed).
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 
           # Extract new docs build
           tar -zxf ../julia-*-htmldocs.tar.gz
