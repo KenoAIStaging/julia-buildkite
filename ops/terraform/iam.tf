@@ -341,6 +341,34 @@ data "aws_iam_policy_document" "docs_deploy" {
       values   = ["deploy_docs"]
     }
   }
+
+  # Read the staged HTML docs (julia-*-htmldocs.tar.gz) that the build
+  # pipeline's doctest step wrote to the julia-ci staging bucket. The
+  # deploy_docs job downloads them with `aws s3 cp --recursive`, which lists
+  # the bucket -- hence both GetObject and ListBucket. Same bucket the publish
+  # role reads (julia-pr's bucket is not a publishable/deployable input).
+  statement {
+    sid       = "ReadStagedDocs"
+    actions   = ["s3:GetObject"]
+    resources = ["${local.staging_bucket_arns["julia-ci"]}/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:PrincipalTag/step_key"
+      values   = ["deploy_docs"]
+    }
+  }
+  statement {
+    sid       = "ListStagedDocsBucket"
+    actions   = ["s3:ListBucket"]
+    resources = [local.staging_bucket_arns["julia-ci"]]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:PrincipalTag/step_key"
+      values   = ["deploy_docs"]
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "docs_deploy" {
