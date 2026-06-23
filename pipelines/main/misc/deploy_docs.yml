@@ -40,13 +40,14 @@ steps:
                 - "/cache/repos:/cache/repos"
         commands: |
           echo "--- Download built docs from staging"
-          # The build pipeline's doctest step stages julia-*-htmldocs.tar.gz to
-          # the commit-sha-gated staging path via the untrusted `stage` role
-          # (the same handoff as the binaries; see misc/doctest.yml). We read it
-          # back from there with the trusted docs-deploy role.
+          # The build pipeline's doctest step stages the html docs under the
+          # commit-sha-gated key julia-htmldocs.tar.gz (see misc/doctest.yml).
+          # We fetch it by exact key with a single GetObject -- the staging
+          # bucket grants public s3:GetObject via its bucket policy, so no IAM
+          # S3 grant (and no bucket-listing) is needed here. We still assume the
+          # docs-deploy role below for the KMS-backed SSH signing of the push.
           source .buildkite/utilities/aws_oidc.sh docs-deploy
-          aws s3 cp "s3://${STAGING_BUCKET:-julialang-ephemeral-ci}/${S3_BUCKET_PREFIX:-bin}/${BUILDKITE_COMMIT}/" . \
-              --recursive --exclude "*" --include "*-htmldocs.tar.gz"
+          aws s3 cp "s3://${STAGING_BUCKET:-julialang-ephemeral-ci}/${S3_BUCKET_PREFIX:-bin}/${BUILDKITE_COMMIT}/julia-htmldocs.tar.gz" .
 
           echo "--- Configure SSH signing via AWS KMS"
           # The deploy key private half lives in AWS KMS and never leaves
@@ -70,7 +71,7 @@ steps:
           find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 
           # Extract new docs build
-          tar -zxf ../julia-*-htmldocs.tar.gz
+          tar -zxf ../julia-htmldocs.tar.gz
 
           # Build commit message
           echo "build based on $${BUILDKITE_COMMIT}" > ../commit_message

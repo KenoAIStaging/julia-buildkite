@@ -58,8 +58,12 @@ steps:
           fi
           source .buildkite/utilities/aws_oidc.sh stage
           source .buildkite/utilities/upload_to_s3.sh
+          # Stage under a stable, version-independent key so the publish
+          # pipeline's docs-deploy job can fetch it by exact key (a single
+          # public GetObject -- the staging bucket is public-read) rather than
+          # listing the bucket, which would need an S3 ListBucket grant.
           UPLOAD_TO_S3_ACL=none upload_to_s3 "doc/$${DOCUMENTER_ARCHIVE}" \
-              "$${STAGING_BUCKET}/$${S3_BUCKET_PREFIX:-bin}/$${BUILDKITE_COMMIT?}/$${DOCUMENTER_ARCHIVE}"
+              "$${STAGING_BUCKET}/$${S3_BUCKET_PREFIX:-bin}/$${BUILDKITE_COMMIT?}/julia-htmldocs.tar.gz"
         env:
           # Give a fake documenter key to get Documenter to try and deploy for us
           DOCUMENTER_KEY: ""
