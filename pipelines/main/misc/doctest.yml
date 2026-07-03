@@ -51,6 +51,13 @@ steps:
           # build_envs.sh; docs are not platform/no-GPL specific, so the prefix
           # is the default `bin`.
           cd ..
+          # Documenter only produces the archive when it decides to deploy,
+          # which it refuses to do for pull-request builds -- on those there
+          # is nothing to stage (and no publish pipeline consumes it).
+          if [[ ! -f "doc/$${DOCUMENTER_ARCHIVE}" ]]; then
+              echo "No $${DOCUMENTER_ARCHIVE} produced (pull-request build); skipping staging."
+              exit 0
+          fi
           if [[ "$${BUILDKITE_PIPELINE_SLUG:-}" == "julia-pr" ]]; then
               STAGING_BUCKET="julialang-ephemeral-pr"
           else
