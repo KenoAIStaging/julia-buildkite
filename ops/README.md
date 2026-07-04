@@ -200,11 +200,12 @@ are Terraform variables with the production defaults):
      deploy key with write access on JuliaLang/docs.julialang.org.
    * Ensure the `aws_uploader` rootfs image (JuliaCI/rootfs-images)
      ships `aws_kms_pkcs11.so` (https://github.com/JackOfMostTrades/aws-kms-pkcs11).
-8. Build + publish the patched rcodesign binary (on any x86_64 linux
-   machine -- the publish job runs on linux):
-   * `utilities/macos/rcodesign/build_rcodesign.sh`
-   * `./30_upload_tools.sh <binary>`; update the pinned sha256 in
-     `utilities/macos/get_rcodesign.sh`.
+8. rcodesign (apple-codesign + AWS KMS backend) comes from `rcodesign_jll`,
+   built by Yggdrasil (`R/rcodesign`) from JuliaCI/apple-platform-rs branch
+   `julia-build`. To ship a new build: push `julia-build`, bump the
+   `GitSource` commit in the Yggdrasil recipe, then update the version /
+   sha256 / URL pins in `utilities/macos/get_rcodesign.sh`
+   (see `utilities/macos/rcodesign/README.md`).
    (The macOS Julia.app is built + staged by the build_ step on the Mac
    builder; the publish step only codesigns + packages it, so there is no
    committed `.app` skeleton anymore.)

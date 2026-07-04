@@ -1,12 +1,12 @@
 # rcodesign with AWS KMS backend
 
-This directory contains the tooling for macOS codesigning + notarization
+This directory documents the tooling for macOS codesigning + notarization
 without secrets on the build agents. We use
 [apple-codesign](https://github.com/indygreg/apple-platform-rs/tree/main/apple-codesign)
-(`rcodesign`) with an AWS KMS signing backend, maintained on our fork
-[`KenoAIStaging/apple-platform-rs`](https://github.com/KenoAIStaging/apple-platform-rs/tree/aws-kms-backend)
-(branch `aws-kms-backend`, on top of a pinned upstream commit). `build_rcodesign.sh`
-clones that fork and builds it -- there is no local patch (see upstreaming note below).
+(`rcodesign`) with an AWS KMS signing backend, maintained on
+[`JuliaCI/apple-platform-rs`](https://github.com/JuliaCI/apple-platform-rs/tree/julia-build)
+(branch `julia-build`: upstream main plus the patch series listed under
+Upstreaming below).
 
 ## How it works
 
@@ -25,18 +25,24 @@ clones that fork and builds it -- there is no local patch (see upstreaming note 
 
 ## Building
 
-```
-./build_rcodesign.sh [output_dir]
-```
+Yggdrasil builds the binary (recipe `R/rcodesign`, `GitSource` pinned to a
+`julia-build` commit, `--features aws-kms` on all platforms) and publishes it
+as [`rcodesign_jll`](https://github.com/JuliaBinaryWrappers/rcodesign_jll.jl)
+release assets. CI fetches and sha256-verifies the pinned tarball via
+`utilities/macos/get_rcodesign.sh`.
 
-builds `rcodesign` from the pinned fork commit (bump `APPLE_PLATFORM_RS_COMMIT`
-in that script after pushing to the fork). CI downloads a prebuilt binary from
-S3 (`tools/rcodesign-<version>-<arch>`, uploaded by `ops/30_upload_tools.sh` in
-this repo) and verifies its sha256; see `utilities/macos/codesign.sh`.
+To ship a new build: push the updated `julia-build` branch to
+`JuliaCI/apple-platform-rs`, open a Yggdrasil PR bumping the `GitSource`
+commit in `R/rcodesign/build_tarballs.jl`, and once the new `rcodesign_jll`
+release exists, update the version / sha256 / base URL pins in
+`get_rcodesign.sh`.
 
 ## Upstreaming
 
-The `aws-kms-backend` branch is self-contained and written to upstream standards
-(feature-gated `aws-kms` Cargo feature, docs in `apple_codesign_aws_kms.rst`,
-unit tests). Consider submitting it as a PR to `indygreg/apple-platform-rs`;
-once merged, `build_rcodesign.sh` shrinks to a plain upstream version pin.
+The patches are submitted to `indygreg/apple-platform-rs` as three series
+(branches on `KenoAIStaging/apple-platform-rs`): `upstream-macho-robustness`
+(zero-slice Mach-O fixes), `upstream-asc-signer` (external ES256 signers for
+App Store Connect tokens), and `upstream-aws-kms` (the feature-gated
+`aws-kms` backend, docs in `apple_codesign_aws_kms.rst`, unit tests). Once
+they land and a release is cut, the Yggdrasil recipe returns to plain
+upstream release tarballs.
