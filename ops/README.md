@@ -145,8 +145,9 @@ are Terraform variables with the production defaults):
 1. Create the three Buildkite pipelines and set their WebUI steps:
    - `julia-pr` — builds pull requests; WebUI = `pipelines/main/0_webui.yml`.
    - `julia-ci` — builds master / release-* / tags / schedule (no PRs);
-     WebUI = `pipelines/main/0_webui.yml` (same launch flow; only `julia-ci`
-     reaches the publish trigger via the `if:` in `trigger_publish.yml`).
+     WebUI = `pipelines/main/0_webui.yml` (same launch flow; the rendered
+     publish trigger is gated on `pipeline.slug == "julia-ci"`, see
+     `utilities/render_launch_pipeline.py`).
    - `julia-publish` — PRs OFF, branch-limited, triggered by `julia-ci`;
      WebUI = `pipelines/publish/0_webui.yml`.
    All are plain `buildkite-agent pipeline upload` (no cryptic plugin, no

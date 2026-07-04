@@ -130,9 +130,5 @@ else
     echo "Skipping notarization (PUBLISH_SKIP_NOTARIZATION=1): .dmg is KMS-signed but not notarized/stapled." >&2
 fi
 
-# TEMP DEBUG (revert): upload the final signed+stapled .dmg as a Buildkite
-# artifact so it can be downloaded and inspected (codesign/spctl) off the agent.
-buildkite-agent artifact upload "${DMG_NAME}" || echo "DEBUG: artifact upload failed (Job API?)" >&2
-
 # Cleanup things we created here
 rm -rf "${DMG_PATH}"

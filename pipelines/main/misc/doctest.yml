@@ -47,7 +47,7 @@ steps:
           # this build's commit-sha-gated staging path via the untrusted
           # `stage` role, which can do nothing else. The trusted julia-publish
           # docs-deploy phase reads it back from the same path (see
-          # utilities/deploy_docs.sh). STAGING_BUCKET selection mirrors
+          # misc/deploy_docs.yml). STAGING_BUCKET selection mirrors
           # build_envs.sh; docs are not platform/no-GPL specific, so the prefix
           # is the default `bin`.
           cd ..

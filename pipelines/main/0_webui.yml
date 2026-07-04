@@ -15,8 +15,8 @@
 #                  * the nightly build schedule lives here
 #
 # Keeping the two configurations identical is deliberate: the only
-# difference in behavior is downstream, where the inlined publish trigger in launch_untrusted_builders.yml gates the
-# julia-publish trigger on `pipeline.slug == "julia-ci"`. Neither pipeline
+# difference in behavior is downstream, where the rendered julia-publish
+# trigger is gated on `pipeline.slug == "julia-ci"`. Neither pipeline
 # holds any secrets or signing rights: jobs obtain credentials at runtime
 # via Buildkite OIDC (see utilities/aws_oidc.sh), and AWS IAM decides what
 # each job identity may do (PR builds: write-once staging uploads only).
