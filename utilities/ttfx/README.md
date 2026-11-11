@@ -178,7 +178,16 @@ methods to the functions they use. A user who loads several unrelated packages h
 path, and this run reproduces it cheaply: the stdlibs are already precompiled. They are
 added to the project rather than loaded from the stdlib directory, so the extensions they
 trigger are precompiled with everything else and each stdlib loads at its resolved
-version. After the normal and GC-off repeats, the copy is precompiled and loaded once,
+version. A full collection is forced between the imports and the first marker. The
+imports leave the process a megabyte or two of allocation short of one, so without it
+that collection lands before the load window, in it, in the run window or after it,
+depending on how much the build allocates, and it takes longer than a small task's load:
+30 ms against 14 for the BaseDirs tasks on the macOS agents, where two such tasks moved
+the suite's geomean by 6%. The windows start from a collected heap instead, with the next
+collection 16 to 21 MiB away. A load that follows a collection directly is slower than
+one that does not, for both arms alike: by 0.8 to 2 ms in the three tasks where this was
+measured (Linux x86-64).
+After the normal and GC-off repeats, the copy is precompiled and loaded once,
 untimed, and the task runs once, cold: `load_times_stdlibs`, `run_times_stdlibs` and
 their stats. They are compared as `load (stdlibs first)` and `run (stdlibs first)`, with
 the thresholds of the normal load and run. There is no GC-off repeat of this run, so each

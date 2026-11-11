@@ -12,7 +12,8 @@
 #   --workdir DIR        per-arm copies of the task projects go here (default: temporary)
 #   --logdir DIR         full output of every failed subprocess is kept here
 #   --stdlibs            also run each task once per sample in a copy of its project that has
-#                        every stdlib as a dependency, with all of them loaded before `__t1`
+#                        every stdlib as a dependency, with all of them loaded, and the
+#                        garbage of that collected, before `__t1`
 #   --tracedir DIR       keep the compilation trace (as --trace-compile --trace-compile-timing)
 #                        of one extra, untimed run of each task script per arm, after the
 #                        timed repeats of block 1, as DIR/<Package>-<Task>-<arm>.log; the
@@ -294,6 +295,12 @@ end
 # are added to the project so that the extensions they trigger are precompiled with the
 # rest. The imports are one statement because a toplevel loop would be compiled, and
 # nothing may be compiled before the first marker.
+#
+# A full collection follows the imports. They leave the process a megabyte or two of
+# allocation short of one, which would otherwise come just before the load window, in it,
+# in the run window or after it, depending on how much the build allocates: some 30 ms
+# that come and go in tasks that load in half that. The windows start from a collected
+# heap instead, and the next collection is tens of megabytes away.
 const ADD_STDLIBS = raw"""
     using TOML
     project = Base.active_project()
@@ -309,7 +316,7 @@ const ADD_STDLIBS = raw"""
     open(io -> TOML.print(io, d), project, "w")
     script = joinpath(dirname(project), "task.jl")
     src = read(script, String)
-    write(script, "import " * join(names, ", ") * "\n" * src)
+    write(script, "import " * join(names, ", ") * "\nGC.gc()\n" * src)
     """
 
 # The snippets mark their phases with `__t1 = time()` (before `using`), `__t2 = time()`
